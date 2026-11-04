@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getMongoStoreCollection } from "@/lib/mongodb";
 
 export const runtime = "nodejs";
 const root = process.cwd();
@@ -26,6 +27,12 @@ const schema = z.object({
 });
 
 async function loadStore() {
+  const collection = await getMongoStoreCollection();
+  if (collection) {
+    const saved = await collection.findOne({ _id: "main" });
+    return saved ? { imports: saved.imports, language: saved.language } : { imports: [], language: "en" };
+  }
+
   try {
     return JSON.parse(await readFile(file, "utf8"));
   } catch (error) {
@@ -34,12 +41,26 @@ async function loadStore() {
   }
 }
 
+async function saveStore(store) {
+  const collection = await getMongoStoreCollection();
+  if (collection) {
+    await collection.replaceOne({ _id: "main" }, store, { upsert: true });
+    return;
+  }
+
+  await mkdir(path.dirname(file), { recursive: true });
+  const temporary = `${file}.tmp`;
+  await writeFile(temporary, JSON.stringify(store), "utf8");
+  const { rename } = await import("node:fs/promises");
+  await rename(temporary, file);
+}
+
 export async function GET() {
   try {
     return NextResponse.json(await loadStore());
   } catch (error) {
-    console.error("Failed to load local marketplace data.", error);
-    return NextResponse.json({ error: "Could not read the local data store." }, { status: 500 });
+    console.error("Failed to load marketplace data.", error);
+    return NextResponse.json({ error: "Could not read the data store." }, { status: 500 });
   }
 }
 
@@ -48,14 +69,10 @@ export async function PUT(request) {
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "The submitted data did not pass validation.", details: parsed.error.issues }, { status: 400 });
-    await mkdir(path.dirname(file), { recursive: true });
-    const temporary = `${file}.tmp`;
-    await writeFile(temporary, JSON.stringify(parsed.data), "utf8");
-    const { rename } = await import("node:fs/promises");
-    await rename(temporary, file);
+    await saveStore(parsed.data);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Failed to save local marketplace data.", error);
-    return NextResponse.json({ error: "Could not save local data." }, { status: 500 });
+    console.error("Failed to save marketplace data.", error);
+    return NextResponse.json({ error: "Could not save data." }, { status: 500 });
   }
 }

@@ -13,11 +13,13 @@ npm run dev
 
 Open `http://localhost:3000`. To create a production build, run `npm run build`, then `npm start`.
 
-## Local data and environment
+## Data storage and environment
 
-The default local demo mode stores imports and the selected interface language in `data/store.json` through the server-side `/api/store` route. The directory and file are created on the first save. Keep the development server on a trusted machine; this local mode has no login or multi-user data isolation.
+By default, the app stores imports and the selected interface language in `data/store.json` through the server-side `/api/store` route. To use MongoDB Atlas instead, copy `.env.example` to `.env.local`, set `MONGODB_URI` to your Atlas connection string, and optionally set `MONGODB_DB` (defaults to `marketplace_intelligence`). When `MONGODB_URI` is set, the app stores the dataset in the `app_store` collection; otherwise it uses the local JSON file. `LOCAL_STORE_PATH` changes the local file location.
 
-No environment variables are required. Optionally copy `.env.example` to `.env.local` and set `LOCAL_STORE_PATH` to a different project-relative JSON file path. There is no PostgreSQL database or Supabase authentication configured in this MVP; no credentials or marketplace API keys are needed.
+In Atlas, create a database user and allow network access from the machine running the app, then use the driver's connection string from Atlas. URL-encode special characters in the database user's password. Keep the actual URI in `.env.local`; never commit it or expose it through a `NEXT_PUBLIC_` variable. The `.env*` files are ignored by Git.
+
+This MVP stores one shared dataset and has no authentication or per-user data isolation. Do not expose it publicly or use it for multiple users until authentication and access controls are implemented.
 
 ## Demo and sample files
 
@@ -47,7 +49,7 @@ npm run build
 
 ## Limitations
 
-- Local JSON storage is for a single-user development/demo deployment, not a production multi-user database. Add authenticated ownership and PostgreSQL before exposing it to users.
+- Local JSON and MongoDB Atlas storage in this MVP are for a single-user development/demo deployment; the app has no authenticated ownership or multi-user data isolation.
 - Login/register routes explain that authentication is not configured; they do not collect credentials.
 - Currency is not detected or converted. Amounts remain in the source report's units.
 - Matching and return categories are deterministic and depend on the imported fields and marketplace report semantics.
