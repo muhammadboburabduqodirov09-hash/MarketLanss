@@ -25,7 +25,7 @@ This MVP stores one shared dataset and has no authentication or per-user data is
 
 On Overview, choose **Load demo data**. Fictional reports are generated and sent through the same column recognition, row mapping, validation, and calculation functions used by uploaded data. The demo has 120 orders, payment transactions, 24 return records, feedback, and six products. Its payment report intentionally contains two changed amounts and a duplicate payment.
 
-The generated CSV samples are in `public/samples/` and are downloadable from Help. Regenerate them with:
+The generated CSV samples are in `public/samples/` and are downloadable from Help. The returns sample uses clearly fictional buyer identities, reserved example.com email addresses, and non-routable 202-555 numbers; Telegram values are intentionally invalid examples. It contains no marketplace conversation or account links. Regenerate the samples with:
 
 ```powershell
 npm run samples

@@ -87,14 +87,18 @@ test("maps optional return, customer, marketplace, and inventory fields without 
   assert.deepEqual(inspectRows([{ order_id: "ORD-9" }], missingReason, "returns").invalidIndexes, [0]);
 });
 
-test("imports the existing sample return report with optional fields left empty", async () => {
+test("imports the sample return report with fictional customer details and no marketplace links", async () => {
   const text = await readFile(new URL("../public/samples/returns_sample.csv", import.meta.url), "utf8");
   const parsed = await parseUpload({ name: "returns_sample.csv", size: Buffer.byteLength(text), text: async () => text });
   const mappings = Object.fromEntries(recognizeColumns(parsed.headers).map(({ header, field }) => [header, field]));
   const mapped = mapRows(parsed.rows, mappings);
   assert.equal(mapped.length, parsed.rows.length);
   assert.ok(mapped.every((row) => row.orderId && row.returnReason));
-  assert.ok(mapped.every((row) => !row.customerEmail && !row.marketplaceConversationUrl));
+  assert.ok(mapped.every((row) => row.customerName.startsWith("Sample Buyer ")));
+  assert.ok(mapped.every((row) => row.customerPhone.startsWith("202-555-01")));
+  assert.ok(mapped.every((row) => row.customerEmail.endsWith("@example.com")));
+  assert.ok(mapped.every((row) => row.customerTelegram.startsWith("sample.buyer")));
+  assert.ok(mapped.every((row) => !row.marketplaceConversationUrl && !row.marketplaceAccountUrl));
   assert.deepEqual(inspectRows(parsed.rows, mapped, "returns").invalidIndexes, []);
 });
 

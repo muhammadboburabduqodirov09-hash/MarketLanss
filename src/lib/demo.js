@@ -38,14 +38,43 @@ export function createDemoImports() {
         "Received the wrong item",
       ];
       const reason = reasons[index % reasons.length];
-      returns.push({ orderId, product: product.product, sku: product.sku, quantity: 1, returnReason: reason, date, additional: {} });
+      returns.push({
+        orderId,
+        returnId: `RET-DEMO-${String(index).padStart(4, "0")}`,
+        product: product.product,
+        sku: product.sku,
+        quantity: 1,
+        returnReason: reason,
+        date,
+        customerName: `Sample Buyer ${String(index).padStart(3, "0")}`,
+        customerId: `DEMO-CUST-${String(index).padStart(4, "0")}`,
+        customerPhone: `202-555-${String(100 + index).padStart(4, "0")}`,
+        customerEmail: `buyer-${String(index).padStart(3, "0")}@example.com`,
+        customerTelegram: `sample.buyer${String(index).padStart(3, "0")}`,
+        marketplace: "Demo Marketplace",
+        additional: {},
+      });
       if (index % 2 === 0) feedback.push({ orderId, product: product.product, comment: `Customer note: ${reason.toLowerCase()}.`, date, additional: {} });
     }
   }
   const sources = {
     orders: orders.map((row) => ({ order_id: row.orderId, product_name: row.product, sku: row.sku, unit_price: row.unitPrice, quantity: row.quantity, amount: row.amount, date: row.date })),
     payments: payments.map((row) => ({ order_id: row.orderId, amount: row.amount, transaction_type: row.transactionType, date: row.date })),
-    returns: returns.map((row) => ({ order_id: row.orderId, product_name: row.product, sku: row.sku, quantity: row.quantity, return_reason: row.returnReason, date: row.date })),
+    returns: returns.map((row) => ({
+      return_id: row.returnId,
+      order_id: row.orderId,
+      product_name: row.product,
+      sku: row.sku,
+      quantity: row.quantity,
+      return_reason: row.returnReason,
+      date: row.date,
+      customer_name: row.customerName,
+      customer_id: row.customerId,
+      customer_phone: row.customerPhone,
+      customer_email: row.customerEmail,
+      customer_telegram: row.customerTelegram,
+      marketplace: row.marketplace,
+    })),
     feedback: feedback.map((row) => ({ order_id: row.orderId, product_name: row.product, comment: row.comment, date: row.date })),
     products: products.map((row) => ({ product_name: row.product, sku: row.sku, unit_price: row.unitPrice })),
   };
