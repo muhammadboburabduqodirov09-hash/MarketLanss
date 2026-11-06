@@ -1,10 +1,11 @@
-run dev
-  import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
-import * as XLSX from "@e965/xlsx";
-import {
-  analyzeColumnTypes,
-  calculatePaymentAudit,
+  import { readFile } from "node:fs/promises";
+  import * as XLSX from "@e965/xlsx";
+  import {
+    analyzeColumnTypes,
+    calculateInventoryInsights,
+    calculatePaymentAudit,
   calculateReturns,
   categorizeReturn,
   escapeCsv,
@@ -47,6 +48,63 @@ test("recognizes normalized headers and requires confirmation for ambiguous amou
   const result = recognizeColumns(["Product Name", "seller-sku", "order_id", "amount", "payment_amount"]);
   assert.deepEqual(result.map((column) => column.field), ["product", "sku", "orderId", "", "amount"]);
   assert.equal(result[3].confidence, "low");
+  assert.equal(recognizeColumns(["feedback"])[0].field, "comment");
+});
+
+test("maps optional return, customer, marketplace, and inventory fields without losing feedback text", () => {
+  const headers = [
+    "return_id", "order_id", "product_name", "sku", "quantity", "return_reason",
+    "customer_feedback", "return_status", "customer_name", "customer_id", "phone",
+    "email", "telegram_username", "marketplace_name", "conversation_url", "marketplace_account_url",
+    "refund_amount", "available_stock",
+  ];
+  const mappings = Object.fromEntries(recognizeColumns(headers).map(({ header, field }) => [header, field]));
+  const fullText = "  The product failed on the first day.\nPlease contact me after 5 PM.  ";
+  const raw = {
+    return_id: "RET-7", order_id: "ORD-7", product_name: "Desk lamp", sku: "LAMP-1",
+    quantity: "2", return_reason: "Damaged product", customer_feedback: fullText,
+    return_status: "Approved", customer_name: "Buyer", customer_id: "C-7",
+    phone: "+1 555 0100", email: "buyer@example.test", telegram_username: "buyer7",
+    marketplace_name: "Example Market", conversation_url: "https://market.example/orders/ORD-7",
+    marketplace_account_url: "https://market.example/account/C-7",
+    refund_amount: "24.50", available_stock: "8",
+  };
+  const row = mapRows([raw], mappings)[0];
+  assert.equal(row.customerFeedback, fullText);
+  assert.equal(row.returnId, "RET-7");
+  assert.equal(row.status, "Approved");
+  assert.equal(row.marketplaceConversationUrl, raw.conversation_url);
+  assert.equal(row.marketplaceAccountUrl, raw.marketplace_account_url);
+  assert.equal(row.refund, -24.5);
+  assert.equal(row.stockQuantity, 8);
+  assert.deepEqual(inspectRows([raw], [row], "returns").invalidIndexes, []);
+
+  const reasonOnly = mapRows([{ order_id: "ORD-8", return_reason: "Wrong size" }], {
+    order_id: "orderId", return_reason: "returnReason",
+  });
+  assert.deepEqual(inspectRows([{ order_id: "ORD-8", return_reason: "Wrong size" }], reasonOnly, "returns").invalidIndexes, []);
+  const missingReason = mapRows([{ order_id: "ORD-9" }], { order_id: "orderId" });
+  assert.deepEqual(inspectRows([{ order_id: "ORD-9" }], missingReason, "returns").invalidIndexes, [0]);
+});
+
+test("imports the existing sample return report with optional fields left empty", async () => {
+  const text = await readFile(new URL("../public/samples/returns_sample.csv", import.meta.url), "utf8");
+  const parsed = await parseUpload({ name: "returns_sample.csv", size: Buffer.byteLength(text), text: async () => text });
+  const mappings = Object.fromEntries(recognizeColumns(parsed.headers).map(({ header, field }) => [header, field]));
+  const mapped = mapRows(parsed.rows, mappings);
+  assert.equal(mapped.length, parsed.rows.length);
+  assert.ok(mapped.every((row) => row.orderId && row.returnReason));
+  assert.ok(mapped.every((row) => !row.customerEmail && !row.marketplaceConversationUrl));
+  assert.deepEqual(inspectRows(parsed.rows, mapped, "returns").invalidIndexes, []);
+});
+
+test("parses every published sample CSV", async () => {
+  for (const name of ["orders_sample.csv", "payments_sample.csv", "products_sample.csv", "feedback_sample.csv", "returns_sample.csv"]) {
+    const text = await readFile(new URL(`../public/samples/${name}`, import.meta.url), "utf8");
+    const parsed = await parseUpload({ name, size: Buffer.byteLength(text), text: async () => text });
+    assert.ok(parsed.headers.length > 0, `${name} has headers`);
+    assert.ok(parsed.rows.length > 0, `${name} has data rows`);
+  }
 });
 
 test("maps values, normalizes locale numbers and dates, and retains ignored fields", () => {
@@ -115,6 +173,24 @@ test("classifies return reasons deterministically and aggregates imported record
   assert.equal(result.returnRate, 2 / 3);
   assert.equal(result.productCounts[0].name, "Bottle");
   assert.equal(result.trendCounts.length, 2);
+});
+
+test("produces inventory recommendations only from imported stock and dated sales", () => {
+  const insights = calculateInventoryInsights([
+    { reportType: "products", rows: [{ product: "Desk lamp", sku: "L-1", stockQuantity: 4 }] },
+    { reportType: "orders", rows: [
+      { product: "Desk lamp", sku: "L-1", quantity: 3, date: "2026-01-03" },
+      { product: "Desk lamp", sku: "L-1", quantity: 6, date: "2026-02-03" },
+      { product: "Mug", sku: "M-1", quantity: 2, date: "2026-01-05" },
+      { product: "Mug", sku: "M-1", quantity: 4, date: "2026-02-05" },
+    ] },
+  ]);
+  const lamp = insights.find((item) => item.sku === "L-1");
+  const mug = insights.find((item) => item.sku === "M-1");
+  assert.match(lamp.recommendation, /consider restocking/i);
+  assert.equal(lamp.tone, "warning");
+  assert.match(mug.recommendation, /increased 100%/i);
+  assert.equal(mug.stock, null);
 });
 
 test("demo records are linked consistently and include intentional audit cases", () => {

@@ -21,6 +21,7 @@ export const fields = {
   product: "Product name",
   sku: "SKU",
   orderId: "Order ID",
+  returnId: "Return ID",
   quantity: "Quantity",
   unitPrice: "Unit price",
   amount: "Amount",
@@ -28,6 +29,17 @@ export const fields = {
   transactionType: "Transaction type",
   date: "Date",
   returnReason: "Return reason",
+  customerFeedback: "Full customer feedback",
+  status: "Return status",
+  customerName: "Customer name",
+  customerId: "Customer ID",
+  customerPhone: "Customer phone",
+  customerEmail: "Customer email",
+  customerTelegram: "Customer Telegram",
+  marketplace: "Marketplace",
+  marketplaceConversationUrl: "Marketplace conversation URL",
+  marketplaceAccountUrl: "Marketplace account URL",
+  stockQuantity: "Current stock",
   refund: "Refund amount",
   comment: "Customer comment",
 };
@@ -35,14 +47,26 @@ export const fields = {
 const aliases = {
   product: ["product", "productname", "itemtitle", "title", "itemname", "name"],
   sku: ["sku", "sellersku", "productsku", "itemid", "productid"],
-  orderId: ["orderid", "ordernumber", "transactionid", "referenceid", "order"],
+  orderId: ["orderid", "ordernumber", "transactionid", "referenceid", "order", "orderno", "marketplaceorderid"],
+  returnId: ["returnid", "returnnumber", "returnreference", "returnref", "rmanumber", "rma"],
   quantity: ["quantity", "qty", "units", "count"],
   unitPrice: ["unitprice", "price", "itemprice", "sellingprice", "priceperunit"],
   amount: ["amount", "total", "payout", "paymentamount", "transactionamount", "gross"],
   fee: ["fee", "fees", "commission", "marketplacefee"],
   transactionType: ["transactiontype", "type", "category", "transaction", "event"],
-  date: ["date", "orderdate", "transactiondate", "createdat", "returndate"],
-  returnReason: ["returnreason", "reason", "refundreason", "complaint", "returncomment"],
+  date: ["date", "orderdate", "transactiondate", "createdat", "returndate", "requestdate"],
+  returnReason: ["returnreason", "reason", "refundreason", "complaint", "returncomment", "reasonforreturn", "returncause", "reasonreturned", "returnreasontext"],
+  customerFeedback: ["customerfeedback", "customerexplanation", "customerresponse", "customerreason", "returnexplanation", "fullfeedback", "customerfeedbacktext", "customerfeedbackmessage"],
+  status: ["status", "returnstatus", "refundstatus", "resolutionstatus"],
+  customerName: ["customername", "buyername", "recipientname"],
+  customerId: ["customerid", "buyerid", "clientid"],
+  customerPhone: ["customerphone", "phone", "phonenumber", "buyerphone", "telephone"],
+  customerEmail: ["customeremail", "email", "emailaddress", "buyeremail"],
+  customerTelegram: ["customertelegram", "telegram", "telegramusername", "telegramhandle"],
+  marketplace: ["marketplace", "platform", "channel", "marketplacename"],
+  marketplaceConversationUrl: ["marketplaceconversationurl", "conversationurl", "conversationlink", "chaturl", "messagelink", "returnconversationurl"],
+  marketplaceAccountUrl: ["marketplaceaccounturl", "customeraccounturl", "buyerprofileurl", "accounturl"],
+  stockQuantity: ["stock", "stockquantity", "currentstock", "inventory", "inventoryquantity", "inventorylevel", "availablestock", "availablequantity", "availableunits", "stockonhand", "stocklevel", "quantityinstock", "onhand"],
   refund: ["refund", "refundamount", "refundedamount"],
   comment: ["comment", "feedback", "customercomment", "review", "message"],
 };
@@ -160,7 +184,9 @@ export function mapRows(rows, mappings) {
       }
       const value = row[header];
       if (["quantity", "unitPrice", "amount", "fee", "refund"].includes(field)) result[field] = normalizeNumber(value);
+      else if (field === "stockQuantity") result[field] = normalizeNumber(value);
       else if (field === "date") result.date = normalizeDate(value);
+      else if (["returnReason", "customerFeedback", "comment"].includes(field)) result[field] = value === null || value === undefined ? "" : String(value);
       else result[field] = value === null || value === undefined ? "" : String(value).trim();
     }
     if (result.transactionType) result.transactionType = normalizeTransactionType(result.transactionType);
@@ -180,11 +206,11 @@ export function inspectRows(rows, mappedRows, reportType) {
     if (seen.has(key)) duplicateIndexes.push(index);
     seen.add(key);
   });
-  const required = reportType === "orders" || reportType === "payments" || reportType === "returns"
-    ? ["orderId"]
-    : reportType === "products" ? ["product"] : ["comment"];
   const invalidIndexes = mappedRows.flatMap((row, index) => {
-    const missingIdentity = required.some((field) => !String(row[field] ?? "").trim());
+    const missingIdentity = reportType === "returns"
+      ? !String(row.orderId ?? "").trim() || ![row.returnReason, row.customerFeedback, row.comment].some((value) => String(value ?? "").trim())
+      : (reportType === "orders" || reportType === "payments" ? ["orderId"] : reportType === "products" ? ["product"] : ["comment"])
+        .some((field) => !String(row[field] ?? "").trim());
     const missingFinancialValue = reportType === "orders"
       ? (row.amount === null || row.amount === undefined) && (
         row.unitPrice === null || row.unitPrice === undefined || row.quantity === null || row.quantity === undefined
@@ -213,7 +239,7 @@ export function analyzeColumnTypes(rows) {
     const values = rows.map((row) => row[header]).filter((value) => value !== null && value !== undefined && String(value).trim() !== "");
     if (!values.length) return [header, "empty"];
     const recognized = recognizeColumns([header])[0].field;
-    if (["product", "sku", "orderId", "transactionType", "returnReason", "comment"].includes(recognized)) return [header, "text"];
+    if (["product", "sku", "orderId", "transactionType", "returnReason", "customerFeedback", "comment", "status", "customerName", "customerId", "customerPhone", "customerEmail", "customerTelegram", "marketplace", "marketplaceConversationUrl", "marketplaceAccountUrl", "returnId"].includes(recognized)) return [header, "text"];
     const dates = values.filter((value) => typeof value === "string" && /[-/]|T/.test(value) && Boolean(normalizeDate(value))).length;
     const numeric = values.filter((value) => normalizeNumber(value) !== null).length;
     const type = dates === values.length ? "date" : numeric === values.length ? "number" : (numeric || dates) ? "mixed" : "text";
@@ -299,7 +325,7 @@ export function categorizeReturn(text = "") {
 
 export function calculateReturns(imports) {
   const records = imports.filter((item) => item.reportType === "returns").flatMap((item) =>
-    item.rows.map((row, rowIndex) => ({ ...row, _importId: item.id, _rowIndex: rowIndex, category: row.category || categorizeReturn(row.returnReason || row.comment) })),
+    item.rows.map((row, rowIndex) => ({ ...row, _importId: item.id, _rowIndex: rowIndex, category: row.category || categorizeReturn(row.returnReason || row.customerFeedback || row.comment) })),
   );
   const orders = imports.filter((item) => item.reportType === "orders").flatMap((item) => item.rows);
   const orderIds = new Set(orders.map((row) => row.orderId).filter(Boolean));
@@ -332,6 +358,66 @@ export function calculateReturns(imports) {
       .map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     feedbackCount: feedback.length,
   };
+}
+
+export function calculateInventoryInsights(imports) {
+  const products = new Map();
+  const productKey = (row) => row.sku || row.product;
+  const getProduct = (row) => {
+    const key = productKey(row);
+    if (!key) return null;
+    if (!products.has(key)) products.set(key, {
+      key,
+      name: row.product || key,
+      sku: row.sku || "",
+      stock: null,
+      monthlySales: new Map(),
+    });
+    const product = products.get(key);
+    if (!product.name && row.product) product.name = row.product;
+    if (!product.sku && row.sku) product.sku = row.sku;
+    return product;
+  };
+
+  imports.filter((item) => item.reportType === "products").flatMap((item) => item.rows).forEach((row) => {
+    const product = getProduct(row);
+    if (product && Number.isFinite(row.stockQuantity)) product.stock = row.stockQuantity;
+  });
+  imports.filter((item) => item.reportType === "orders").flatMap((item) => item.rows).forEach((row) => {
+    const product = getProduct(row);
+    if (!product || !row.date || !/^\d{4}-\d{2}/.test(row.date)) return;
+    const month = row.date.slice(0, 7);
+    const units = Number.isFinite(row.quantity) ? row.quantity : 1;
+    product.monthlySales.set(month, (product.monthlySales.get(month) ?? 0) + units);
+  });
+
+  return [...products.values()].map((product) => {
+    const months = [...product.monthlySales].sort(([first], [second]) => first.localeCompare(second));
+    const latest = months.at(-1);
+    const previous = months.at(-2);
+    const change = latest && previous && previous[1] > 0 ? (latest[1] - previous[1]) / previous[1] : null;
+    const latestThreeMonths = months.slice(-3);
+    const averageMonthlyDemand = latestThreeMonths.length
+      ? latestThreeMonths.reduce((total, [, units]) => total + units, 0) / latestThreeMonths.length
+      : null;
+    let recommendation = "No dated order history is available for this product.";
+    let tone = "neutral";
+    if (product.stock !== null && averageMonthlyDemand !== null && averageMonthlyDemand > 0 && product.stock <= averageMonthlyDemand) {
+      recommendation = `Current stock (${product.stock}) is at or below recent monthly demand (${averageMonthlyDemand.toFixed(1)} units). Consider restocking.`;
+      tone = "warning";
+    } else if (change !== null && change >= 0.25 && latest[1] >= 2) {
+      recommendation = `Sales increased ${Math.round(change * 100)}% in the latest recorded month. Review stock before the next period.`;
+      tone = "success";
+    } else if (product.stock !== null && averageMonthlyDemand !== null) {
+      recommendation = `Current stock (${product.stock}) is above recent monthly demand (${averageMonthlyDemand.toFixed(1)} units).`;
+    } else if (months.length) {
+      recommendation = "Demand history is available; import current inventory to estimate replenishment needs.";
+    }
+    return { ...product, latestMonth: latest?.[0] || "", latestUnits: latest?.[1] ?? null, change, recommendation, tone };
+  }).sort((first, second) => {
+    const priority = (item) => item.tone === "warning" ? 0 : item.tone === "success" ? 1 : 2;
+    return priority(first) - priority(second) || (second.change ?? -Infinity) - (first.change ?? -Infinity);
+  });
 }
 
 export function escapeCsv(value) {

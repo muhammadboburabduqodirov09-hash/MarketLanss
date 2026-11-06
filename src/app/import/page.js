@@ -7,7 +7,7 @@ import { Badge, Button, Card, ErrorMessage, PageHeader, SuccessMessage } from "@
 import { analyzeColumnTypes, fields, inspectRows, mapRows, parseUpload, recognizeColumns, reportTypes } from "@/lib/data";
 import { translateField, translateReport } from "@/lib/translations";
 
-const requiredField = { orders: "orderId", payments: "orderId", returns: "orderId", products: "product", feedback: "comment" };
+const requiredField = { orders: "orderId", payments: "orderId", products: "product", feedback: "comment" };
 
 function translateFileError(error, t) {
   const message = error.message || "";
@@ -76,7 +76,11 @@ export default function ImportPage() {
     setError("");
     setSuccess("");
     const mandatory = requiredField[reportType];
-    if (!Object.values(mappings).includes(mandatory)) return setError(t("noOrderId"));
+    const mappedFields = Object.values(mappings);
+    if (reportType === "returns") {
+      if (!mappedFields.includes("orderId")) return setError(t("noOrderId"));
+      if (!mappedFields.some((field) => ["returnReason", "customerFeedback", "comment"].includes(field))) return setError(t("noReturnReason"));
+    } else if (!mappedFields.includes(mandatory)) return setError(t("noOrderId"));
     if (reportType === "payments" && !Object.values(mappings).includes("amount")) return setError(t("mapPaymentAmount"));
     if (reportType === "orders" && !Object.values(mappings).some((field) => ["amount", "unitPrice"].includes(field))) return setError(t("mapOrderAmount"));
     setBusy(true);

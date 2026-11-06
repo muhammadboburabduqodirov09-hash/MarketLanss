@@ -1,6 +1,6 @@
 # Marketplace Intelligence
 
-A JavaScript, Next.js App Router, and Tailwind CSS local-first MVP for importing marketplace CSV/XLS/XLSX reports, auditing settlements, and investigating returns. Data processing is deterministic; the app does not connect to marketplace APIs. Excel parsing uses a maintained SheetJS-compatible release because the npm `xlsx` package version is affected by published security advisories.
+A JavaScript, Next.js App Router, and Tailwind CSS local-first app for importing marketplace CSV/XLS/XLSX reports, auditing settlements, and investigating returns. Data processing is deterministic; the app does not connect to marketplace APIs or an external AI service. Excel parsing uses a maintained SheetJS-compatible release because the npm `xlsx` package version is affected by published security advisories.
 
 ## Run locally
 
@@ -33,9 +33,11 @@ npm run samples
 
 ## Import workflow
 
-Choose a report type, then select or drop a CSV, XLSX, or XLS file (up to 10 MB / 100,000 rows). Confirm the proposed column mappings; ambiguous amount columns are not mapped automatically. Review the preview and warnings, then import. Rows with missing values and duplicates are retained, not silently discarded. Original row values and unmapped fields are retained with each standardized row.
+Choose a report type, then select or drop a CSV, XLSX, or XLS file (up to 10 MB / 100,000 rows). Confirm the proposed column mappings; ambiguous amount columns are not mapped automatically. Review the preview and warnings, then import. Returns require an order ID and a return reason or customer-feedback column; customer details, marketplace reference, stock quantity, and conversation URL are optional. Rows with missing values and duplicates are retained, not silently discarded. Original row values and unmapped fields are retained with each standardized row.
 
-Payments are matched by order ID. Expected values use order totals (or quantity × unit price) plus signed, explicitly categorized settlement adjustments; see the auditor for the calculation explanation. Return reason categories are keyword suggestions and editable. Return rate is only available when order data is imported.
+Payments are matched by order ID. Expected values use order totals (or quantity × unit price) plus signed, explicitly categorized settlement adjustments; see the auditor for the calculation explanation. Return reason categories are keyword suggestions and editable. Returns can be filtered, searched, sorted, and explored by clicking chart categories. The detail view shows the imported explanation and customer fields as provided; it does not invent missing contacts or marketplace links. A conversation link is only opened when a valid HTTP(S) URL was included in the imported report. Return rate is only available when order data is imported.
+
+The dashboard's stock-and-trend analyst uses explainable local rules over dated order quantities and imported stock levels. These are directional replenishment signals, not generated AI forecasts or purchase orders. Import product inventory and order history to see inventory-aware recommendations.
 
 Use the language selector to choose English, Russian, or Uzbek for application labels and analysis. Imported source values are not translated or modified.
 
@@ -53,4 +55,4 @@ npm run build
 - Login/register routes explain that authentication is not configured; they do not collect credentials.
 - Currency is not detected or converted. Amounts remain in the source report's units.
 - Matching and return categories are deterministic and depend on the imported fields and marketplace report semantics.
-- The project intentionally has no live marketplace integrations or AI analysis.
+- The project intentionally has no live marketplace messaging or external AI integration. Local inventory recommendations are deterministic and depend on the imported data's dates, product identifiers, and stock quantities.
