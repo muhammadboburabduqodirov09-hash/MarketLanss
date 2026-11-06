@@ -417,6 +417,7 @@ export function calculateInventoryInsights(imports) {
       ...product,
       latestMonth: latest?.[0] || "",
       latestUnits: latest?.[1] ?? null,
+      averageMonthlyDemand,
       monthlySalesHistory: months.slice(-24).map(([month, units]) => ({ month, units })),
       change,
       recommendation,

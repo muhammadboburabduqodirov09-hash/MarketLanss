@@ -193,6 +193,7 @@ test("produces inventory recommendations only from imported stock and dated sale
   const mug = insights.find((item) => item.sku === "M-1");
   assert.match(lamp.recommendation, /consider restocking/i);
   assert.equal(lamp.tone, "warning");
+  assert.equal(lamp.averageMonthlyDemand, 4.5);
   assert.deepEqual(lamp.monthlySalesHistory, [
     { month: "2026-01", units: 3 },
     { month: "2026-02", units: 6 },
