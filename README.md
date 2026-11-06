@@ -37,7 +37,9 @@ Choose a report type, then select or drop a CSV, XLSX, or XLS file (up to 10 MB 
 
 Payments are matched by order ID. Expected values use order totals (or quantity × unit price) plus signed, explicitly categorized settlement adjustments; see the auditor for the calculation explanation. Return reason categories are keyword suggestions and editable. Returns can be filtered, searched, sorted, and explored by clicking chart categories. The detail view shows the imported explanation and customer fields as provided; it does not invent missing contacts or marketplace links. A conversation link is only opened when a valid HTTP(S) URL was included in the imported report. Return rate is only available when order data is imported.
 
-The dashboard's stock-and-trend analyst uses explainable local rules over dated order quantities and imported stock levels. These are directional replenishment signals, not generated AI forecasts or purchase orders. Import product inventory and order history to see inventory-aware recommendations.
+The dashboard's local stock signals use explainable rules over dated order quantities and imported stock levels. An optional DeepSeek panel can provide additional advice from product names, stock levels, and up to 24 months of aggregated unit sales. It does not send customer or return details and has no access to live external trend data; seasonal conclusions require recurring history or market context you provide. Treat generated advice as a hypothesis to review, not a forecast or purchase order.
+
+To enable DeepSeek, put a newly rotated key in the ignored `.env.local` file as `DEEPSEEK_API_KEY=...` and restart the app. Never commit the key or expose it through a `NEXT_PUBLIC_` variable. The app sends this product-level summary to DeepSeek only when you click **Analyze inventory**. This local MVP has no authentication; do not expose it publicly.
 
 Use the language selector to choose English, Russian, or Uzbek for application labels and analysis. Imported source values are not translated or modified.
 

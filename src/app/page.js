@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -11,6 +11,7 @@ import {
   FileUp,
   PackageSearch,
   ShoppingBag,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -63,9 +64,15 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [chartType, setChartType] = useState("line");
+  const [aiStatus, setAiStatus] = useState("checking");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [marketSeasonContext, setMarketSeasonContext] = useState("");
   const audit = calculatePaymentAudit(imports);
   const returns = calculateReturns(imports);
-  const inventory = calculateInventoryInsights(imports);
+  const inventory = useMemo(() => calculateInventoryInsights(imports), [imports]);
+  const inventorySignature = useMemo(() => JSON.stringify(inventory), [inventory]);
   const monthlyData = useMemo(() => getMonthlyData(imports), [imports]);
   const recentReturns = [...returns.records].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5);
   const recentImports = [...imports].sort((a, b) => b.importedAt.localeCompare(a.importedAt)).slice(0, 4);
@@ -75,6 +82,52 @@ export default function DashboardPage() {
     .flatMap((item) => item.rows.map((row) => ({ ...row, _fileName: item.fileName })))
     .sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 4);
   const hasData = imports.some((item) => item.rows.length);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/analytics")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not check AI configuration.");
+        return response.json();
+      })
+      .then((data) => { if (active) setAiStatus(data.configured ? "ready" : "missing"); })
+      .catch(() => { if (active) setAiStatus("unavailable"); });
+    return () => { active = false; };
+  }, []);
+
+  async function analyzeInventory() {
+    if (aiBusy || aiStatus !== "ready" || !inventory.length) return;
+    setAiBusy(true);
+    setAiError("");
+    setAiAnalysis(null);
+    try {
+      const response = await fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language,
+          marketSeasonContext,
+          products: inventory.slice(0, 200).map((item) => ({
+            name: item.name,
+            sku: item.sku,
+            stock: item.stock,
+            averageMonthlyDemand: item.averageMonthlyDemand,
+            latestMonth: item.latestMonth,
+            latestUnits: item.latestUnits,
+            change: item.change,
+            monthlySalesHistory: item.monthlySalesHistory,
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || t("aiRequestFailed"));
+      setAiAnalysis({ ...result, sourceSignature: inventorySignature });
+    } catch (requestError) {
+      setAiError(requestError.message || t("aiRequestFailed"));
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   async function loadDemo() {
     if (busy) return;
@@ -187,6 +240,42 @@ export default function DashboardPage() {
                   )) : <EmptyState title={t("noInventoryData")} description={t("inventoryImportHint")} action={<Link href="/import" className="text-link">{t("importData")} →</Link>} />}
                 </div>
                 <p className="analysis-disclaimer">{t("inventoryAnalysisDisclaimer")}</p>
+              </Card>
+              <Card className="dashboard-panel ai-analysis-panel">
+                <div className="section-heading">
+                  <h2><Sparkles size={15} />{t("aiInventoryTitle")}</h2>
+                  <Badge tone={aiStatus === "ready" ? "success" : "neutral"}>{aiStatus === "ready" ? "DeepSeek" : t("aiNotConfigured")}</Badge>
+                </div>
+                <div className="ai-analysis-content">
+                  <p className="ai-analysis-description">{t("aiInventoryDescription")}</p>
+                  <label className="field ai-context-field">
+                    {t("marketSeasonContext")}
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={marketSeasonContext}
+                      onChange={(event) => setMarketSeasonContext(event.target.value)}
+                      placeholder={t("marketSeasonPlaceholder")}
+                    />
+                  </label>
+                  {aiStatus === "missing" && <p className="ai-setup-note">{t("aiSetupHint")} <code>DEEPSEEK_API_KEY</code> {t("aiSetupHintEnd")}</p>}
+                  {aiStatus === "unavailable" && <p className="ai-error" role="status">{t("aiStatusUnavailable")}</p>}
+                  <Button onClick={analyzeInventory} disabled={aiStatus !== "ready" || aiBusy || !inventory.length}>
+                    <Sparkles size={14} />{aiBusy ? t("aiAnalyzing") : t("analyzeWithAi")}
+                  </Button>
+                  <p className="analysis-disclaimer">{t("aiPrivacyDisclaimer")}</p>
+                  {aiError && <p className="ai-error" role="alert">{aiError}</p>}
+                  {aiAnalysis?.sourceSignature === inventorySignature && <div className="ai-result" aria-live="polite">
+                    <p className="ai-summary">{aiAnalysis.summary}</p>
+                    {aiAnalysis.recommendations.map((recommendation, index) => (
+                      <article className="ai-recommendation" key={`${recommendation.title}-${index}`}>
+                        <div><strong>{recommendation.title}</strong><Badge tone={recommendation.confidence === "high" ? "success" : "neutral"}>{t(`confidence${recommendation.confidence}`)}</Badge></div>
+                        <p>{recommendation.action}</p>
+                        <small>{t("aiEvidence")}: {recommendation.evidence}</small>
+                      </article>
+                    ))}
+                  </div>}
+                </div>
               </Card>
               <Card className="dashboard-panel">
                 <div className="section-heading"><h2><FileClock size={15} />{t("recentActivity")}</h2><Link href="/history">{t("history")} <ArrowRight size={13} /></Link></div>

@@ -413,7 +413,15 @@ export function calculateInventoryInsights(imports) {
     } else if (months.length) {
       recommendation = "Demand history is available; import current inventory to estimate replenishment needs.";
     }
-    return { ...product, latestMonth: latest?.[0] || "", latestUnits: latest?.[1] ?? null, change, recommendation, tone };
+    return {
+      ...product,
+      latestMonth: latest?.[0] || "",
+      latestUnits: latest?.[1] ?? null,
+      monthlySalesHistory: months.slice(-24).map(([month, units]) => ({ month, units })),
+      change,
+      recommendation,
+      tone,
+    };
   }).sort((first, second) => {
     const priority = (item) => item.tone === "warning" ? 0 : item.tone === "success" ? 1 : 2;
     return priority(first) - priority(second) || (second.change ?? -Infinity) - (first.change ?? -Infinity);
