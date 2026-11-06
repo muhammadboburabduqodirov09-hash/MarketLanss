@@ -6,13 +6,10 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ComposedChart,
   Legend,
-  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
-  Scatter,
   Tooltip,
   XAxis,
   YAxis,
@@ -142,11 +139,6 @@ export default function ReturnsPage() {
       const name = entry?.payload?.name || entry?.name || "";
       if (name) chooseChartCategory(name);
     };
-    const renderCategoryTooltip = ({ active, payload }) => {
-      if (!active || !payload?.length) return null;
-      const entry = payload[0].payload;
-      return <div className="chart-tooltip"><strong>{entry.label}</strong><span>{t("records")}: {entry.value}</span></div>;
-    };
     if (chartType === "pie") {
       return <ResponsiveContainer width="100%" height="100%"><PieChart>
         <Pie data={categoryCounts} dataKey="value" nameKey="label" innerRadius={52} outerRadius={90} paddingAngle={2} style={{ cursor: "pointer" }}>
@@ -154,24 +146,12 @@ export default function ReturnsPage() {
         </Pie><Tooltip formatter={(value) => [value, t("records")]} /><Legend />
       </PieChart></ResponsiveContainer>;
     }
-    if (chartType === "bar") {
-      return <ResponsiveContainer width="100%" height="100%"><BarChart data={categoryCounts} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
-        <CartesianGrid stroke="#edf0f3" vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 9 }} interval={0} /><YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-        <Tooltip /><Legend /><Bar dataKey="value" name={t("records")} fill="#16865b" radius={[3, 3, 0, 0]} onClick={clickCategory} cursor="pointer">
-          {categoryCounts.map((entry, index) => <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />)}
-        </Bar>
-      </BarChart></ResponsiveContainer>;
-    }
-    return <ResponsiveContainer width="100%" height="100%"><ComposedChart data={categoryCounts} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
-      <CartesianGrid stroke="#edf0f3" vertical={false} />
-      <XAxis xAxisId="category-index" type="number" dataKey="index" domain={[0, Math.max(categoryCounts.length - 1, 1)]} ticks={categoryCounts.map((entry) => entry.index)} tickFormatter={(index) => categoryCounts[index]?.label || ""} tick={{ fontSize: 9 }} />
-      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-      <Tooltip content={renderCategoryTooltip} />
-      <Legend />
-      <Line xAxisId="category-index" type="monotone" dataKey="value" name={t("records")} stroke="#16865b" strokeWidth={2} dot={false} activeDot={false} />
-      <Scatter xAxisId="category-index" data={categoryCounts} dataKey="value" name={t("records")} fill="#16865b" legendType="none"
-        onClick={(entry) => chooseChartCategory(entry?.payload?.name || entry?.name)} />
-    </ComposedChart></ResponsiveContainer>;
+    return <ResponsiveContainer width="100%" height="100%"><BarChart data={categoryCounts} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
+      <CartesianGrid stroke="#edf0f3" vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 9 }} interval={0} /><YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+      <Tooltip /><Legend /><Bar dataKey="value" name={t("records")} fill="#16865b" radius={[3, 3, 0, 0]} onClick={clickCategory} cursor="pointer">
+        {categoryCounts.map((entry, index) => <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />)}
+      </Bar>
+    </BarChart></ResponsiveContainer>;
   }
 
   const currency = new Intl.NumberFormat(language === "ru" ? "ru-RU" : language === "uz" ? "uz-UZ" : "en-US", { style: "percent", maximumFractionDigits: 1 });
@@ -193,7 +173,7 @@ export default function ReturnsPage() {
             <div className="section-heading chart-heading">
               <div><h2>{t("reasonBreakdown")}</h2><p>{t("clickReasonHint")}</p></div>
               <label className="chart-type-control"><span>{t("chartType")}</span><select value={chartType} onChange={(event) => setChartType(event.target.value)} aria-label={t("chartType")}>
-                <option value="pie">{t("pieChart")}</option><option value="bar">{t("barChart")}</option><option value="line">{t("lineChart")}</option>
+                <option value="pie">{t("pieChart")}</option><option value="bar">{t("barChart")}</option>
               </select></label>
             </div>
             <div className="returns-chart" onClick={chartType === "pie" ? handlePieClick : undefined}>{renderChart()}</div>

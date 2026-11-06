@@ -228,19 +228,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="dashboard-chart">{chartContent()}</div>
               </Card>
-              <Card className="dashboard-panel">
-                <div className="section-heading"><h2><TrendingUp size={15} />{t("inventoryAnalyst")}</h2><Badge tone="blue">{t("dataDriven")}</Badge></div>
-                <div className="insight-list">
-                  {inventory.length ? inventory.slice(0, 4).map((item) => (
-                    <div className="insight-row" key={item.key}>
-                      <span className={`insight-indicator insight-${item.tone}`} />
-                      <div><strong>{item.name}</strong><p>{item.recommendation}</p>{item.sku && <small>SKU {item.sku}</small>}</div>
-                      {item.change !== null && <Badge tone={item.change > 0 ? "success" : "neutral"}>{item.change > 0 ? "+" : ""}{Math.round(item.change * 100)}%</Badge>}
-                    </div>
-                  )) : <EmptyState title={t("noInventoryData")} description={t("inventoryImportHint")} action={<Link href="/import" className="text-link">{t("importData")} →</Link>} />}
-                </div>
-                <p className="analysis-disclaimer">{t("inventoryAnalysisDisclaimer")}</p>
-              </Card>
               <Card className="dashboard-panel ai-analysis-panel">
                 <div className="section-heading">
                   <h2><Sparkles size={15} />{t("aiInventoryTitle")}</h2>
@@ -276,6 +263,19 @@ export default function DashboardPage() {
                     ))}
                   </div>}
                 </div>
+              </Card>
+              <Card className="dashboard-panel">
+                <div className="section-heading"><h2><TrendingUp size={15} />{t("inventoryAnalyst")}</h2><Badge tone="blue">{t("dataDriven")}</Badge></div>
+                <div className="insight-list">
+                  {inventory.length ? inventory.slice(0, 4).map((item) => (
+                    <div className="insight-row" key={item.key}>
+                      <span className={`insight-indicator insight-${item.tone}`} />
+                      <div><strong>{item.name}</strong><p>{item.recommendation}</p>{item.sku && <small>SKU {item.sku}</small>}</div>
+                      {item.change !== null && <Badge tone={item.change > 0 ? "success" : "neutral"}>{item.change > 0 ? "+" : ""}{Math.round(item.change * 100)}%</Badge>}
+                    </div>
+                  )) : <EmptyState title={t("noInventoryData")} description={t("inventoryImportHint")} action={<Link href="/import" className="text-link">{t("importData")} →</Link>} />}
+                </div>
+                <p className="analysis-disclaimer">{t("inventoryAnalysisDisclaimer")}</p>
               </Card>
               <Card className="dashboard-panel">
                 <div className="section-heading"><h2><FileClock size={15} />{t("recentActivity")}</h2><Link href="/history">{t("history")} <ArrowRight size={13} /></Link></div>

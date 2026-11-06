@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   buildDeepSeekMessages,
+  buildDeepSeekRequest,
   inventoryAnalysisRequestSchema,
   inventoryAnalysisResponseSchema,
+  parseDeepSeekJson,
 } from "@/lib/deepseek-analysis";
 
 export const runtime = "nodejs";
@@ -52,13 +54,7 @@ export async function POST(request) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-        max_tokens: 2200,
-      }),
+      body: JSON.stringify(buildDeepSeekRequest(messages)),
       cache: "no-store",
       signal: AbortSignal.timeout(45000),
     });
@@ -85,7 +81,7 @@ export async function POST(request) {
 
   let result;
   try {
-    result = JSON.parse(content);
+    result = parseDeepSeekJson(content);
   } catch {
     return jsonResponse({ error: "DeepSeek returned an invalid analysis format. Please try again." }, 502);
   }

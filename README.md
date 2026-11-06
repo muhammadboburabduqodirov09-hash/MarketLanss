@@ -1,6 +1,6 @@
 # Marketplace Intelligence
 
-A JavaScript, Next.js App Router, and Tailwind CSS local-first app for importing marketplace CSV/XLS/XLSX reports, auditing settlements, and investigating returns. Data processing is deterministic; the app does not connect to marketplace APIs or an external AI service. Excel parsing uses a maintained SheetJS-compatible release because the npm `xlsx` package version is affected by published security advisories.
+A JavaScript, Next.js App Router, and Tailwind CSS local-first app for importing marketplace CSV/XLS/XLSX reports, auditing settlements, and investigating returns. Data processing is deterministic; the app does not connect to marketplace APIs. Optional stock advice can use the DeepSeek API when configured. Excel parsing uses a maintained SheetJS-compatible release because the npm `xlsx` package version is affected by published security advisories.
 
 ## Run locally
 
@@ -37,9 +37,9 @@ Choose a report type, then select or drop a CSV, XLSX, or XLS file (up to 10 MB 
 
 Payments are matched by order ID. Expected values use order totals (or quantity × unit price) plus signed, explicitly categorized settlement adjustments; see the auditor for the calculation explanation. Return reason categories are keyword suggestions and editable. Returns can be filtered, searched, sorted, and explored by clicking chart categories. The detail view shows the imported explanation and customer fields as provided; it does not invent missing contacts or marketplace links. A conversation link is only opened when a valid HTTP(S) URL was included in the imported report. Return rate is only available when order data is imported.
 
-The dashboard's local stock signals use explainable rules over dated order quantities and imported stock levels. An optional DeepSeek panel can provide additional advice from product names, stock levels, and up to 24 months of aggregated unit sales. It does not send customer or return details and has no access to live external trend data; seasonal conclusions require recurring history or market context you provide. Treat generated advice as a hypothesis to review, not a forecast or purchase order.
+The dashboard's local stock signals use explainable rules over dated order quantities and imported stock levels. Treat these as directional indicators, not forecasts or purchase orders.
 
-To enable DeepSeek, put a newly rotated key in the ignored `.env.local` file as `DEEPSEEK_API_KEY=...` and restart the app. Never commit the key or expose it through a `NEXT_PUBLIC_` variable. The app sends this product-level summary to DeepSeek only when you click **Analyze inventory**. This local MVP has no authentication; do not expose it publicly.
+The optional DeepSeek panel adds advice based on imported product names, stock levels, and dated unit-sales history. It sends no customer or return details and does not have live access to external trends; seasonality is considered only when the available history or seller-provided market context supports it. Treat advice as a hypothesis, not a forecast or purchase order. Configure a rotated API key in the ignored `.env.local` as `DEEPSEEK_API_KEY=...` and restart the app. The integration uses DeepSeek's `deepseek-chat` model and sends only `model` and a validated `messages` array, without `response_format` or other optional generation parameters.
 
 Use the language selector to choose English, Russian, or Uzbek for application labels and analysis. Imported source values are not translated or modified.
 
