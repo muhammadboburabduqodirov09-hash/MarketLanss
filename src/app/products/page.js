@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { easeOut } from "@/components/motion";
 import {
   AlignJustify,
   Boxes,
@@ -38,14 +40,31 @@ function ProductPrice({ product, language }) {
   );
 }
 
+const dialogMotion = {
+  initial: { opacity: 0, y: 16, scale: 0.97 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.16 } },
+  transition: { duration: 0.26, ease: easeOut },
+};
+const sheetEase = [0.32, 0.72, 0, 1];
+const sheetMotion = {
+  initial: { y: "100%" },
+  animate: { y: 0 },
+  exit: { y: "100%", transition: { duration: 0.25, ease: sheetEase } },
+  transition: { duration: 0.4, ease: sheetEase },
+};
+
 export default function ProductsPage() {
   const { imports, stockOverrides, language, t, save, notify } = useApp();
   const [view, setView] = useState("cards");
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState("");
+  const dialogRef = useRef(null);
+  const savingRef = useRef(false);
   const [period, setPeriod] = useState("week");
   const [stockDraft, setStockDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  useEffect(() => { savingRef.current = saving; }, [saving]);
   const [error, setError] = useState("");
   const products = useMemo(
     () => calculateProductCatalog(imports, stockOverrides),
@@ -58,6 +77,30 @@ export default function ProductsPage() {
       : products;
   }, [products, search]);
   const selectedProduct = products.find((product) => product.key === selectedKey);
+  const dialogOpen = Boolean(selectedProduct);
+  // Dialog keyboard contract: focus moves in, Tab stays inside, Escape closes, focus returns to the opener.
+  useEffect(() => {
+    if (!dialogOpen) return undefined;
+    const opener = document.activeElement;
+    const dialog = dialogRef.current;
+    dialog?.querySelector("button")?.focus();
+    const onKey = (event) => {
+      if (event.key === "Escape") { if (!savingRef.current) setSelectedKey(""); return; }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = dialog.querySelectorAll("button:not(:disabled), input:not(:disabled)");
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!dialog.contains(document.activeElement)) { event.preventDefault(); first?.focus(); return; }
+      if (event.shiftKey ? document.activeElement === first : document.activeElement === last) {
+        event.preventDefault();
+        (event.shiftKey ? last : first)?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); opener?.focus?.(); };
+  }, [dialogOpen]);
+  // Phones show the dialog as a bottom sheet, so it rises from the edge it is attached to. Only read after a click, never on the server.
+  const sheet = Boolean(selectedProduct) && window.matchMedia("(max-width: 680px)").matches;
 
   function openProduct(product) {
     setSelectedKey(product.key);
@@ -183,11 +226,19 @@ export default function ProductsPage() {
         )}
       </Card>
 
+      <AnimatePresence>
       {selectedProduct && (
-        <div className="product-modal-backdrop" onMouseDown={(event) => {
+        <motion.div className="product-modal-backdrop" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSelectedKey("");
-        }}>
-          <section className="product-detail-modal" role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
+        }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.16 } }} transition={{ duration: 0.2 }}>
+          <motion.section
+            ref={dialogRef}
+            className="product-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-detail-title"
+            {...(sheet ? sheetMotion : dialogMotion)}
+          >
             <div className="product-detail-heading">
               <div><span className="product-detail-icon"><Boxes size={19} /></span>
                 <div><h2 id="product-detail-title">{selectedProduct.name}</h2><small>{selectedProduct.sku || t("catalog.noSku")}</small></div>
@@ -237,9 +288,10 @@ export default function ProductsPage() {
               </form>
               <ErrorMessage>{error}</ErrorMessage>
             </div>
-          </section>
-        </div>
+          </motion.section>
+        </motion.div>
       )}
+      </AnimatePresence>
     </>
   );
 }

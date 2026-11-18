@@ -593,3 +593,21 @@ export function makeCsv(rows) {
   const headers = Object.keys(rows[0]);
   return [headers.map(escapeCsv).join(","), ...rows.map((row) => headers.map((key) => escapeCsv(row[key])).join(","))].join("\r\n");
 }
+
+// Fractional change between the last two values (0.25 = +25%); null when there is no fair comparison.
+export function latestChange(values) {
+  if (values.length < 2) return null;
+  const [previous, current] = values.slice(-2);
+  if (!Number.isFinite(previous) || !Number.isFinite(current) || previous === 0) return null;
+  return (current - previous) / Math.abs(previous);
+}
+
+// Change of `key` between the last two rows (sorted "YYYY-MM"); null unless those are consecutive months,
+// so a gap or a month that only another report filled never reads as a real month-over-month move.
+export function monthOverMonth(rows, key) {
+  if (rows.length < 2) return null;
+  const [previous, current] = rows.slice(-2);
+  const index = (month) => { const [year, monthNumber] = month.split("-").map(Number); return year * 12 + monthNumber; };
+  if (index(current.month) - index(previous.month) !== 1) return null;
+  return latestChange([previous[key], current[key]]);
+}

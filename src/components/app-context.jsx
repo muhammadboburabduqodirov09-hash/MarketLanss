@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { translate } from "@/lib/translations";
 
 const AppContext = createContext(null);
@@ -12,6 +12,14 @@ export function AppProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const toastTimer = useRef(0);
+
+  // One timer at a time, so a new toast is not dismissed early by the previous toast's timer.
+  const showToast = useCallback((message) => {
+    window.clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = window.setTimeout(() => setToast(""), 3500);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -53,10 +61,9 @@ export function AppProvider({ children }) {
     try {
       await save(imports, nextLanguage);
     } catch (saveError) {
-      setToast(saveError.message);
-      window.setTimeout(() => setToast(""), 3500);
+      showToast(saveError.message);
     }
-  }, [imports, save]);
+  }, [imports, save, showToast]);
 
   const value = useMemo(() => ({
     imports, stockOverrides, language, ready, error, toast,
@@ -64,11 +71,8 @@ export function AppProvider({ children }) {
     save,
     setLanguage,
     clearToast: () => setToast(""),
-    notify: (message) => {
-      setToast(message);
-      window.setTimeout(() => setToast(""), 3500);
-    },
-  }), [imports, stockOverrides, language, ready, error, toast, save, setLanguage]);
+    notify: showToast,
+  }), [imports, stockOverrides, language, ready, error, toast, save, setLanguage, showToast]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

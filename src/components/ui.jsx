@@ -1,6 +1,7 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
+import { formatUzbekDate } from "@/lib/translations";
 
 export function Button({ children, variant = "primary", className = "", ...props }) {
   return (
@@ -10,8 +11,8 @@ export function Button({ children, variant = "primary", className = "", ...props
   );
 }
 
-export function Card({ children, className = "" }) {
-  return <section className={`card ${className}`}>{children}</section>;
+export function Card({ children, className = "", ...props }) {
+  return <section className={`card ${className}`} {...props}>{children}</section>;
 }
 
 export function PageHeader({ title, description, actions }) {
@@ -52,17 +53,20 @@ export function Badge({ children, tone = "neutral" }) {
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 
+// Cached per locale: CountUp formats on every animation frame.
+const moneyFormats = {};
 export function formatMoney(value, language = "en") {
-  return new Intl.NumberFormat(language === "uz" ? "uz-UZ" : language === "ru" ? "ru-RU" : "en-US", {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(value ?? 0);
+  const locale = language === "uz" ? "uz-UZ" : language === "ru" ? "ru-RU" : "en-US";
+  moneyFormats[locale] ??= new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return moneyFormats[locale].format(value ?? 0);
 }
 
 export function formatDate(value, language = "en") {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(language === "uz" ? "uz-UZ" : language === "ru" ? "ru-RU" : "en-US", {
+  if (language === "uz") return formatUzbekDate(date);
+  return new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "en-US", {
     year: "numeric", month: "short", day: "numeric",
   }).format(date);
 }

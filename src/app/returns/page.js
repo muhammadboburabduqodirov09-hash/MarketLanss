@@ -19,7 +19,7 @@ import { useApp } from "@/components/app-context";
 import { Badge, Button, Card, EmptyState, ErrorMessage, PageHeader, StatCard, formatDate, formatMoney } from "@/components/ui";
 import { calculateReturns, categorizeReturn, makeCsv } from "@/lib/data";
 
-const chartColors = ["#16865b", "#d34c4c", "#e7a53d", "#5273bd", "#8b70b4", "#52a5a0", "#87929d", "#bf8b58"];
+const chartColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)", "var(--chart-7)", "var(--chart-8)"];
 const sortOptions = ["newest", "oldest", "refundHigh", "refundLow"];
 
 function safeMarketplaceUrl(value) {
@@ -143,12 +143,12 @@ export default function ReturnsPage() {
       return <ResponsiveContainer width="100%" height="100%"><PieChart>
         <Pie data={categoryCounts} dataKey="value" nameKey="label" innerRadius={52} outerRadius={90} paddingAngle={2} style={{ cursor: "pointer" }}>
           {categoryCounts.map((entry, index) => <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />)}
-        </Pie><Tooltip formatter={(value) => [value, t("records")]} /><Legend />
+        </Pie><Tooltip formatter={(value) => [value, t("records")]} /><Legend iconType="circle" iconSize={8} />
       </PieChart></ResponsiveContainer>;
     }
     return <ResponsiveContainer width="100%" height="100%"><BarChart data={categoryCounts} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
-      <CartesianGrid stroke="#edf0f3" vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 9 }} interval={0} /><YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-      <Tooltip /><Legend /><Bar dataKey="value" name={t("records")} fill="#16865b" radius={[3, 3, 0, 0]} onClick={clickCategory} cursor="pointer">
+      <CartesianGrid vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={0} /><YAxis allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={34} />
+      <Tooltip cursor={{ fill: "var(--neutral-soft)" }} /><Legend iconType="circle" iconSize={8} /><Bar dataKey="value" name={t("records")} fill="var(--chart-1)" radius={[4, 4, 0, 0]} onClick={clickCategory} cursor="pointer">
         {categoryCounts.map((entry, index) => <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />)}
       </Bar>
     </BarChart></ResponsiveContainer>;
